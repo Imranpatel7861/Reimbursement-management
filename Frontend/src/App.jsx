@@ -39,7 +39,7 @@ function App() {
   
         <Route index element={<Navigate to="submitexpense" replace />} />
           <Route path="submitexpense"  element={<SubmitExpense/>} />
-            <Route path="expensehistory"  element={<ExpenseHistory/>} />
+          <Route path="expensehistory"  element={<ExpenseHistory/>} />
 </Route>
   {/* {Financerdashboard} */}
       <Route path="/Financerdashboard" element={<FinancerDashboard />}>
