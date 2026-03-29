@@ -19,28 +19,10 @@ const Dashboard = () => {
 
   const menuItems = [
     {
-      id: "director",
-      icon: Briefcase,
-      label: "Director",
-      path: "/admindashboard/director",
-    },
-    {
-      id: "financer",
-      icon: CreditCard,
-      label: "Financer",
-      path: "/admindashboard/financer",
-    },
-    {
-      id: "manager",
+      id: "Users",
       icon: Users,
-      label: "Manager",
-      path: "/admindashboard/manager",
-    },
-    {
-      id: "employee",
-      icon: User,
-      label: "Employee",
-      path: "/admindashboard/employee",
+      label: "Manage Users",
+      path: "/admindashboard/users",
     },
   ];
 
@@ -62,7 +44,6 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
@@ -132,7 +113,6 @@ const Dashboard = () => {
 
       {/* Right Side — always visible */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
         {/* Top Bar */}
         <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
           {/* Mobile menu toggle */}
@@ -147,9 +127,6 @@ const Dashboard = () => {
           <h1 className="text-lg font-semibold text-gray-800 tracking-wide">
             WELCOME ADMIN !!
           </h1>
-
-        
-        
         </div>
 
         {/* Main Content — child routes render here inside the layout */}

@@ -1,47 +1,135 @@
-import { useState } from "react";
-
-const initialManagers = [
-  { id: 1, name: "Priya Sharma", email: "priya@company.com", password: "Pass@123", role: "Manager" },
-  { id: 2, name: "Rahul Mehta", email: "rahul@company.com", password: "Pass@456", role: "Manager" },
-];
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 export default function Managemanager() {
-  const [managers, setManagers] = useState(initialManagers);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "Manager" });
+  const [managers, setManagers] = useState([]);
+  const [form, setForm] = useState({ name: "", email: "", role: "Manager" });
   const [editId, setEditId] = useState(null);
-  const [showPass, setShowPass] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = () => {
-    if (!form.name || !form.email || !form.password) return;
-    if (editId !== null) {
-      setManagers(managers.map((m) => (m.id === editId ? { ...m, ...form } : m)));
-      setEditId(null);
-    } else {
-      setManagers([...managers, { ...form, id: Date.now() }]);
+  useEffect(() => {
+    fetchManagers();
+  }, []);
+
+  const fetchManagers = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(
+        "http://localhost:5000/api/users?role=MANAGER",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      setManagers(res.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    setForm({ name: "", email: "", password: "", role: "Manager" });
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.email) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      if (editId !== null) {
+        await axios.put(
+          `http://localhost:5000/api/users/${editId}`,
+          { ...form, role: "MANAGER" },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+      } else {
+        await axios.post(
+          "http://localhost:5000/api/users",
+          { ...form, role: "MANAGER" },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+      }
+
+      fetchManagers();
+      setForm({ name: "", email: "", role: "Manager" });
+      setEditId(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEdit = (m) => {
     setEditId(m.id);
-    setForm({ name: m.name, email: m.email, password: m.password, role: m.role });
+    setForm({
+      name: m.name,
+      email: m.email,
+      role: m.role,
+    });
   };
 
-  const handleDelete = (id) => {
-    setManagers(managers.filter((m) => m.id !== id));
-    if (editId === id) {
-      setEditId(null);
-      setForm({ name: "", email: "", password: "", role: "Manager" });
+  const handleDelete = async (id) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/users/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      fetchManagers();
+      if (editId === id) {
+        setEditId(null);
+        setForm({ name: "", email: "", role: "Manager" });
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendNewPassword = async (id) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:5000/api/users/${id}/send-password`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      alert("New password sent to the manager's email!");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="p-4 space-y-4">
-
       {/* Page heading */}
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
-        <h1 className="text-base font-bold text-gray-800">Manager Management</h1>
+        <h1 className="text-base font-bold text-gray-800">
+          Manager Management
+        </h1>
       </div>
 
       {/* Form */}
@@ -51,7 +139,9 @@ export default function Managemanager() {
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Name</label>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">
+              Name
+            </label>
             <input
               type="text"
               placeholder="Full name"
@@ -61,7 +151,9 @@ export default function Managemanager() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Email</label>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">
+              Email
+            </label>
             <input
               type="email"
               placeholder="email@company.com"
@@ -71,17 +163,9 @@ export default function Managemanager() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Password</label>
-            <input
-              type="text"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Role</label>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">
+              Role
+            </label>
             <input
               type="text"
               value="Manager"
@@ -93,13 +177,21 @@ export default function Managemanager() {
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleSubmit}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition disabled:opacity-50"
           >
-            {editId !== null ? "Update" : "Add Manager"}
+            {loading
+              ? "Processing..."
+              : editId !== null
+                ? "Update"
+                : "Add Manager"}
           </button>
           {editId !== null && (
             <button
-              onClick={() => { setEditId(null); setForm({ name: "", email: "", password: "", role: "Manager" }); }}
+              onClick={() => {
+                setEditId(null);
+                setForm({ name: "", email: "", role: "Manager" });
+              }}
               className="border border-gray-200 text-gray-500 text-xs px-4 py-1.5 rounded-lg hover:bg-gray-50 transition"
             >
               Cancel
@@ -119,36 +211,42 @@ export default function Managemanager() {
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              {["Name", "Email", "Password", "Role", "Actions"].map((h) => (
-                <th key={h} className="text-left font-semibold text-gray-500 uppercase px-4 py-2 tracking-wide">
+              {["Name", "Email", "Role", "Actions"].map((h) => (
+                <th
+                  key={h}
+                  className="text-left font-semibold text-gray-500 uppercase px-4 py-2 tracking-wide"
+                >
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {managers.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">
+                <td
+                  colSpan={4}
+                  className="text-center py-8 text-gray-400 text-xs"
+                >
+                  Loading...
+                </td>
+              </tr>
+            ) : managers.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="text-center py-8 text-gray-400 text-xs"
+                >
                   No managers added yet.
                 </td>
               </tr>
             ) : (
               managers.map((m) => (
                 <tr key={m.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-2.5 font-medium text-gray-800">{m.name}</td>
-                  <td className="px-4 py-2.5 text-gray-500">{m.email}</td>
-                  <td className="px-4 py-2.5 text-gray-500">
-                    <div className="flex items-center gap-1.5">
-                      <span>{showPass[m.id] ? m.password : "••••••••"}</span>
-                      <button
-                        onClick={() => setShowPass((p) => ({ ...p, [m.id]: !p[m.id] }))}
-                        className="text-gray-400 hover:text-gray-600 transition"
-                      >
-                        {showPass[m.id] ? "Hide" : "Show"}
-                      </button>
-                    </div>
+                  <td className="px-4 py-2.5 font-medium text-gray-800">
+                    {m.name}
                   </td>
+                  <td className="px-4 py-2.5 text-gray-500">{m.email}</td>
                   <td className="px-4 py-2.5">
                     <span className="bg-blue-50 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-full">
                       {m.role}
@@ -168,6 +266,12 @@ export default function Managemanager() {
                       >
                         Delete
                       </button>
+                      <button
+                        onClick={() => handleSendNewPassword(m.id)}
+                        className="text-green-600 hover:underline font-medium"
+                      >
+                        Send New Password
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -176,7 +280,6 @@ export default function Managemanager() {
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }
