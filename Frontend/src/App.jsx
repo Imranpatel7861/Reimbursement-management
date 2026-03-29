@@ -29,10 +29,7 @@ function App() {
 
         <Route path="users" element={<ManageUsers />} />
 
-        <Route path="director" element={<ManageDirector />} />
-        <Route path="financer" element={<ManageFinancer />} />
-        <Route path="manager" element={<Managemanager />} />
-        <Route path="employee" element={<ManageEmployee />} />
+        
       </Route>
 
       {/* {Employeedashboard} */}
