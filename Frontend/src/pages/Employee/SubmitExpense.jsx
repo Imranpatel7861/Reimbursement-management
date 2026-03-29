@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 
 const G20_CURRENCIES = [
   { code: "USD", name: "US Dollar", country: "United States" },
@@ -51,6 +52,11 @@ export default function SubmitRequest() {
   const [submitted, setSubmitted] = useState(false);
   const [log, setLog] = useState([]);
   const [receipt, setReceipt] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [loadingOCR, setLoadingOCR] = useState(false);
+  const [errorOCR, setErrorOCR] = useState(null);
+  const [ocrData, setOcrData] = useState(null);
+  const [showOcrPreview, setShowOcrPreview] = useState(false);
 
   const handleSubmit = () => {
     if (!form.description || !form.amount || !form.expenseDate) return;
@@ -61,7 +67,65 @@ export default function SubmitRequest() {
 
   const handleReceiptChange = (e) => {
     const file = e.target.files[0];
-    if (file) setReceipt(file.name);
+    if (file) {
+      setReceipt(file.name);
+      setReceiptFile(file);
+      setErrorOCR(null);
+    }
+  };
+
+  const handleScanReceipt = async () => {
+    if (!receiptFile) return;
+    setLoadingOCR(true);
+    setErrorOCR(null);
+    setOcrData(null);
+    setShowOcrPreview(false);
+    
+    const formData = new FormData();
+    formData.append("receipt", receiptFile);
+    
+    try {
+      const { data } = await axios.post("http://localhost:5001/api/ocr", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 20000
+      });
+      
+      if (!data.success) {
+        setErrorOCR(data.message || "Failed to scan receipt");
+        return;
+      }
+
+      const extractedData = data.data;
+      setOcrData(extractedData);
+      setShowOcrPreview(true);
+      console.log("[OCR] Extracted data:", extractedData);
+      
+    } catch (err) {
+      console.error("[OCR Error]", err);
+      
+      if (err.code === 'ECONNABORTED') {
+        setErrorOCR("Request timeout. Server may be down.");
+      } else if (err.response?.data?.message) {
+        setErrorOCR(err.response.data.message);
+      } else {
+        setErrorOCR("Failed to scan receipt. Check file and try again.");
+      }
+    } finally {
+      setLoadingOCR(false);
+    }
+  };
+
+  const handleAcceptOcrData = () => {
+    if (!ocrData) return;
+    
+    setForm((prev) => ({
+      ...prev,
+      amount: prev.amount || ocrData.amount || "",
+      expenseDate: prev.expenseDate || ocrData.date || "",
+      description: prev.description || ocrData.merchant || ""
+    }));
+    
+    setShowOcrPreview(false);
   };
 
   return (
@@ -78,15 +142,36 @@ export default function SubmitRequest() {
 
         {/* Top bar: Attach Receipt + Status trail */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
-          <label className="cursor-pointer">
-            <input type="file" className="hidden" onChange={handleReceiptChange} />
-            <span className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-              {receipt ? receipt : "Attach Receipt"}
-            </span>
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="cursor-pointer">
+              <input type="file" className="hidden" onChange={handleReceiptChange} />
+              <span className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                {receipt ? receipt : "Upload Receipt (Optional)"}
+              </span>
+            </label>
+
+            {receiptFile && !submitted && (
+              <button
+                type="button"
+                onClick={handleScanReceipt}
+                disabled={loadingOCR}
+                className="border border-emerald-500 text-emerald-600 bg-emerald-50 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-emerald-100 transition disabled:opacity-50"
+              >
+                {loadingOCR ? "Scanning..." : "Scan Receipt"}
+              </button>
+            )}
+            {errorOCR && (
+              <span className="text-xs text-red-500 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                {errorOCR}
+              </span>
+            )}
+          </div>
 
           {/* Status Steps */}
           <div className="flex items-center gap-2 text-xs">
@@ -108,6 +193,54 @@ export default function SubmitRequest() {
             ))}
           </div>
         </div>
+
+        {/* OCR Preview Modal */}
+        {showOcrPreview && ocrData && (
+          <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-200 space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-emerald-900">OCR Scan Results</h3>
+                <p className="text-xs text-emerald-700 mt-0.5">Review extracted data and confirm</p>
+              </div>
+              <button
+                onClick={() => setShowOcrPreview(false)}
+                className="text-emerald-600 hover:text-emerald-800 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-xs bg-white rounded-lg p-3 border border-emerald-200">
+              <div>
+                <p className="text-emerald-600 font-semibold mb-1">Amount</p>
+                <p className="text-gray-800 font-medium">{ocrData.amount || "—"}</p>
+              </div>
+              <div>
+                <p className="text-emerald-600 font-semibold mb-1">Date</p>
+                <p className="text-gray-800">{ocrData.date || "—"}</p>
+              </div>
+              <div>
+                <p className="text-emerald-600 font-semibold mb-1">Merchant</p>
+                <p className="text-gray-800">{ocrData.merchant || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAcceptOcrData}
+                className="flex-1 border border-emerald-500 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 transition"
+              >
+                ✓ Use These Values
+              </button>
+              <button
+                onClick={() => setShowOcrPreview(false)}
+                className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50 transition"
+              >
+                Edit Manually
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Form body */}
         <div className="px-6 py-5 space-y-6">

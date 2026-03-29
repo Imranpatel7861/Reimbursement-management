@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Upload, Plus, Eye } from "lucide-react";
+import { useState } from "react";
+import { Eye } from "lucide-react";
 
 const DEMO_EXPENSES = [
   {
@@ -50,52 +50,12 @@ const STATUS_STYLES = {
 export default function ExpenseHistory() {
   const [expenses, setExpenses] = useState(DEMO_EXPENSES);
   const [selectedRow, setSelectedRow] = useState(null);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrResult, setOcrResult] = useState(null);
-  const fileRef = useRef();
 
   const toSubmit = expenses.filter((e) => e.status === "Draft").reduce((s, e) => s + e.amount, 0);
   const waiting = expenses.filter((e) => e.status === "Waiting Approval").reduce((s, e) => s + e.amount, 0);
   const approved = expenses.filter((e) => e.status === "Approved").reduce((s, e) => s + e.amount, 0);
 
-  const handleUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setOcrLoading(true);
-    setTimeout(() => {
-      const newExp = {
-        id: Date.now(),
-        employee: "You",
-        description: "Receipt — " + file.name,
-        date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-        category: "Other",
-        paidBy: "Cash",
-        remarks: "Auto-created via OCR",
-        amount: Math.floor(Math.random() * 3000) + 500,
-        currency: "INR",
-        status: "Draft",
-      };
-      setExpenses((prev) => [newExp, ...prev]);
-      setOcrResult(file.name);
-      setOcrLoading(false);
-    }, 1800);
-  };
 
-  const handleNew = () => {
-    const newExp = {
-      id: Date.now(),
-      employee: "You",
-      description: "",
-      date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-      category: "",
-      paidBy: "",
-      remarks: "",
-      amount: 0,
-      currency: "INR",
-      status: "Draft",
-    };
-    setExpenses((prev) => [newExp, ...prev]);
-  };
 
   return (
     <div className="p-4 space-y-4">
@@ -109,30 +69,7 @@ export default function ExpenseHistory() {
       {/* Main card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
 
-        {/* Top action bar */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleUpload} />
-          <button
-            onClick={() => fileRef.current.click()}
-            disabled={ocrLoading}
-            className="flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
-          >
-            <Upload size={13} />
-            {ocrLoading ? "Processing…" : "Upload"}
-          </button>
-          <button
-            onClick={handleNew}
-            className="flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
-          >
-            <Plus size={13} />
-            New
-          </button>
-          {ocrResult && (
-            <span className="text-xs text-emerald-600 font-medium ml-2">
-              ✓ Expense created from "{ocrResult}"
-            </span>
-          )}
-        </div>
+
 
         {/* Summary strip — no arrows, no lines */}
         <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
@@ -172,7 +109,7 @@ export default function ExpenseHistory() {
               {expenses.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-10 text-gray-300 text-xs">
-                    No expenses yet. Click <strong>New</strong> or <strong>Upload</strong> to get started.
+                    No expenses found.
                   </td>
                 </tr>
               ) : (
