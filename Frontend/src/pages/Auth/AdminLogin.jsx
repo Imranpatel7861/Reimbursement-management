@@ -17,6 +17,8 @@ const AdminAuthPage = () => {
     country: "",
   });
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,9 +36,11 @@ const AdminAuthPage = () => {
 
   const handleCountryChange = (e) => {
     const selectedCountry = countries.find(
-      (c) => c.name.common === e.target.value
+      (c) => c.name.common === e.target.value,
     );
-    const currencyCode = selectedCountry ? Object.keys(selectedCountry.currencies)[0] : "";
+    const currencyCode = selectedCountry
+      ? Object.keys(selectedCountry.currencies)[0]
+      : "";
     setCurrency(currencyCode);
     setFormData({ ...formData, country: e.target.value });
   };
@@ -60,10 +64,16 @@ const AdminAuthPage = () => {
           password: formData.password,
         });
         localStorage.setItem("token", res.data.token);
-        setMessage({ text: "Account created successfully! Redirecting...", type: "success" });
+        setMessage({
+          text: "Account created successfully! Redirecting...",
+          type: "success",
+        });
         setTimeout(() => navigate("/admindashboard"), 1500);
       } catch (err) {
-        setMessage({ text: err.response?.data?.message || "Signup failed", type: "error" });
+        setMessage({
+          text: err.response?.data?.message || "Signup failed",
+          type: "error",
+        });
       }
     } else {
       try {
@@ -79,8 +89,34 @@ const AdminAuthPage = () => {
         if (role === "DIRECTOR") navigate("/directordashboard");
         if (role === "EMPLOYEE") navigate("/employeedashboard");
       } catch (err) {
-        setMessage({ text: err.response?.data?.message || "Login failed", type: "error" });
+        setMessage({
+          text: err.response?.data?.message || "Login failed",
+          type: "error",
+        });
       }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      setMessage({ text: "Please enter your email", type: "error" });
+      return;
+    }
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/auth/forgot-password",
+        {
+          email: forgotEmail,
+        },
+      );
+      setMessage({ text: res.data.message, type: "success" });
+      setShowForgotPassword(false);
+    } catch (err) {
+      setMessage({
+        text: err.response?.data?.message || "Failed to reset password",
+        type: "error",
+      });
     }
   };
 
@@ -105,62 +141,7 @@ const AdminAuthPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {isSignUp && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="John Doe"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name
-                  </label>
-                  <input
-                    type="text"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="Your Company Name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Country
-                  </label>
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleCountryChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    required
-                  >
-                    <option value="">Select Country</option>
-                    {countries.map((c, i) => (
-                      <option key={i} value={c.name.common}>
-                        {c.name.common}
-                      </option>
-                    ))}
-                  </select>
-                  {currency && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      Currency: {currency}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
+            {isSignUp && <>{/* Signup fields */}</>}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -205,6 +186,18 @@ const AdminAuthPage = () => {
               </div>
             </div>
 
+            {!isSignUp && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            )}
+
             {isSignUp && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -231,7 +224,9 @@ const AdminAuthPage = () => {
 
             <div className="text-center pt-2">
               <p className="text-sm text-gray-600">
-                {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                {isSignUp
+                  ? "Already have an account?"
+                  : "Don't have an account?"}
                 <button
                   type="button"
                   onClick={() => setIsSignUp(!isSignUp)}
@@ -244,6 +239,44 @@ const AdminAuthPage = () => {
           </form>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Reset Password
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter your email address and we'll send you a new password.
+            </p>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4"
+              placeholder="you@example.com"
+              required
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800"
+              >
+                Send New Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
