@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Upload, Plus, Eye } from "lucide-react";
+import { useState } from "react";
+import { Eye } from "lucide-react";
 
 const DEMO_EXPENSES = [
   {
@@ -12,7 +12,7 @@ const DEMO_EXPENSES = [
     remarks: "None",
     amount: 5000,
     currency: "INR",
-    status: "Draft",
+    status: "Waiting Approval",
   },
   {
     id: 2,
@@ -38,10 +38,21 @@ const DEMO_EXPENSES = [
     currency: "INR",
     status: "Approved",
   },
+  {
+    id: 4,
+    employee: "Rahul Sharma",
+    description: "Office supplies",
+    date: "5th Oct, 2025",
+    category: "Office Expenses",
+    paidBy: "Company Card",
+    remarks: "Stationery",
+    amount: 1500,
+    currency: "INR",
+    status: "Rejected",
+  },
 ];
 
 const STATUS_STYLES = {
-  Draft: "bg-gray-100 text-gray-500 border border-gray-300",
   "Waiting Approval": "bg-yellow-50 text-yellow-600 border border-yellow-300",
   Approved: "bg-emerald-50 text-emerald-600 border border-emerald-400",
   Rejected: "bg-red-50 text-red-600 border border-red-300",
@@ -50,56 +61,16 @@ const STATUS_STYLES = {
 export default function ExpenseHistory() {
   const [expenses, setExpenses] = useState(DEMO_EXPENSES);
   const [selectedRow, setSelectedRow] = useState(null);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrResult, setOcrResult] = useState(null);
-  const fileRef = useRef();
+  const [activeTab, setActiveTab] = useState("Waiting Approval");
 
-  const toSubmit = expenses.filter((e) => e.status === "Draft").reduce((s, e) => s + e.amount, 0);
   const waiting = expenses.filter((e) => e.status === "Waiting Approval").reduce((s, e) => s + e.amount, 0);
   const approved = expenses.filter((e) => e.status === "Approved").reduce((s, e) => s + e.amount, 0);
+  const rejected = expenses.filter((e) => e.status === "Rejected").reduce((s, e) => s + e.amount, 0);
 
-  const handleUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setOcrLoading(true);
-    setTimeout(() => {
-      const newExp = {
-        id: Date.now(),
-        employee: "You",
-        description: "Receipt — " + file.name,
-        date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-        category: "Other",
-        paidBy: "Cash",
-        remarks: "Auto-created via OCR",
-        amount: Math.floor(Math.random() * 3000) + 500,
-        currency: "INR",
-        status: "Draft",
-      };
-      setExpenses((prev) => [newExp, ...prev]);
-      setOcrResult(file.name);
-      setOcrLoading(false);
-    }, 1800);
-  };
-
-  const handleNew = () => {
-    const newExp = {
-      id: Date.now(),
-      employee: "You",
-      description: "",
-      date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-      category: "",
-      paidBy: "",
-      remarks: "",
-      amount: 0,
-      currency: "INR",
-      status: "Draft",
-    };
-    setExpenses((prev) => [newExp, ...prev]);
-  };
+  const filteredExpenses = expenses.filter((e) => e.status === activeTab);
 
   return (
     <div className="p-4 space-y-4">
-
       {/* Page heading */}
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-6 bg-emerald-600 rounded-full" />
@@ -108,51 +79,40 @@ export default function ExpenseHistory() {
 
       {/* Main card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-
-        {/* Top action bar */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleUpload} />
-          <button
-            onClick={() => fileRef.current.click()}
-            disabled={ocrLoading}
-            className="flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
-          >
-            <Upload size={13} />
-            {ocrLoading ? "Processing…" : "Upload"}
-          </button>
-          <button
-            onClick={handleNew}
-            className="flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
-          >
-            <Plus size={13} />
-            New
-          </button>
-          {ocrResult && (
-            <span className="text-xs text-emerald-600 font-medium ml-2">
-              ✓ Expense created from "{ocrResult}"
-            </span>
-          )}
+        {/* Tabs for status */}
+        <div className="flex border-b border-gray-100">
+          {["Waiting Approval", "Approved", "Rejected"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 px-6 py-3 text-sm font-medium transition ${
+                activeTab === tab ? "text-emerald-600 border-b-2 border-emerald-600" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
-        {/* Summary strip — no arrows, no lines */}
+        {/* Summary strip */}
         <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
-          <div className="px-6 py-4">
-            <p className="text-sm font-bold text-gray-800">
-              {toSubmit.toLocaleString("en-IN")} <span className="text-xs font-normal text-gray-400">rs</span>
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">To submit</p>
-          </div>
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 text-center">
             <p className="text-sm font-bold text-gray-800">
               {waiting.toLocaleString("en-IN")} <span className="text-xs font-normal text-gray-400">rs</span>
             </p>
             <p className="text-xs text-yellow-500 mt-0.5 font-medium">Waiting approval</p>
           </div>
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 text-center">
             <p className="text-sm font-bold text-gray-800">
               {approved.toLocaleString("en-IN")} <span className="text-xs font-normal text-gray-400">rs</span>
             </p>
             <p className="text-xs text-emerald-500 mt-0.5 font-medium">Approved</p>
+          </div>
+          <div className="px-6 py-4 text-center">
+            <p className="text-sm font-bold text-gray-800">
+              {rejected.toLocaleString("en-IN")} <span className="text-xs font-normal text-gray-400">rs</span>
+            </p>
+            <p className="text-xs text-red-500 mt-0.5 font-medium">Rejected</p>
           </div>
         </div>
 
@@ -169,14 +129,14 @@ export default function ExpenseHistory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {expenses.length === 0 ? (
+              {filteredExpenses.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-10 text-gray-300 text-xs">
-                    No expenses yet. Click <strong>New</strong> or <strong>Upload</strong> to get started.
+                    No expenses found for this status.
                   </td>
                 </tr>
               ) : (
-                expenses.map((e) => (
+                filteredExpenses.map((e) => (
                   <>
                     <tr
                       key={e.id}
@@ -255,16 +215,16 @@ export default function ExpenseHistory() {
 
         {/* Footer */}
         <div className="px-4 py-2.5 border-t border-gray-50 flex items-center justify-between">
-          <span className="text-xs text-gray-400">{expenses.length} expense{expenses.length !== 1 ? "s" : ""} total</span>
+          <span className="text-xs text-gray-400">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""} total</span>
           <div className="flex items-center gap-3 text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-gray-200 inline-block" /> Draft: {expenses.filter(e => e.status === "Draft").length}
-            </span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-yellow-300 inline-block" /> Waiting: {expenses.filter(e => e.status === "Waiting Approval").length}
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> Approved: {expenses.filter(e => e.status === "Approved").length}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-400 inline-block" /> Rejected: {expenses.filter(e => e.status === "Rejected").length}
             </span>
           </div>
         </div>
