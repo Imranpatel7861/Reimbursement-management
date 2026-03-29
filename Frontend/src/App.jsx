@@ -3,11 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import AdminLogin from "./pages/Auth/AdminLogin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
-import ManageManager from "./pages/Admin/Managemanager";
-import ManageDirector from "./pages/Admin/Managedirector";
-import Managemanager from "./pages/Admin/Managemanager";
-import ManageFinancer from "./pages/Admin/ManageFinancer";
-import ManageEmployee from "./pages/Admin/Manageemployee";
+
 import EmployeeDashboard from "./pages/Employee/EmployeeDashboard";
 import FinancerDashboard from "./pages/Finance/FinanceDashboard";
 import DirectorDashboard from "./pages/Director/DirectorDashboard";
@@ -16,6 +12,7 @@ import SubmitExpense from "./pages/Employee/SubmitExpense";
 import ExpenseHistory from "./pages/Employee/ExpenseHistory";
 import PendingApprovals from "./pages/Manager/PendingApprovals";
 import ManageUsers from "./pages/Admin/ManageUsers";
+import History from "./pages/Manager/ManagerHistory";
 
 function App() {
   return (
@@ -28,8 +25,6 @@ function App() {
         <Route index element={<Navigate to="users" replace />} />
 
         <Route path="users" element={<ManageUsers />} />
-
-        
       </Route>
 
       {/* {Employeedashboard} */}
@@ -38,11 +33,8 @@ function App() {
         <Route path="submitexpense" element={<SubmitExpense />} />
         <Route path="expensehistory" element={<ExpenseHistory />} />
       </Route>
+
       {/* {Financerdashboard} */}
-          <Route path="submitexpense"  element={<SubmitExpense/>} />
-          <Route path="expensehistory"  element={<ExpenseHistory/>} />
-</Route>
-  {/* {Financerdashboard} */}
       <Route path="/Financerdashboard" element={<FinancerDashboard />}>
         {/* <Route index element={<Navigate to="director" replace />} /> */}
       </Route>
@@ -56,7 +48,7 @@ function App() {
       <Route path="/Managerdashboard" element={<ManagerDashboard />}>
         <Route index element={<Navigate to="pendingapprovals" replace />} />
         <Route path="pendingapprovals" element={<PendingApprovals />} />
-        {/*<Route path="expensehistory"  element={<ExpenseHistory/>} /> */}
+        <Route path="history" element={<History />} />
       </Route>
     </Routes>
   );

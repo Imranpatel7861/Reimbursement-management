@@ -5,6 +5,9 @@ const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
 
 const ocrRoutes = require("./routes/ocrRoutes.js");
+const companyRoutes = require("./routes/companyRoutes.js");
+const expenseRoutes = require("./routes/expensesRoutes.js");
+const approvalRoutes = require("./routes/approvalRoutes.js");
 
 const app = express();
 
@@ -37,6 +40,9 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/ocr", ocrRoutes);
+app.use("/api/companies", companyRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/approvals", approvalRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend running 🚀");

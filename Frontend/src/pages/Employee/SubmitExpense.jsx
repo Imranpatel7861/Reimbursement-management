@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
 const G20_CURRENCIES = [
@@ -39,6 +39,7 @@ const PAID_BY = ["Cash", "Credit Card", "Debit Card", "Bank Transfer", "UPI"];
 const STATUS_STEPS = ["Draft", "Waiting Approval", "Approved"];
 
 export default function SubmitRequest() {
+  const [user, setUser] = useState(null);
   const [form, setForm] = useState({
     description: "",
     expenseDate: "",
@@ -58,11 +59,71 @@ export default function SubmitRequest() {
   const [ocrData, setOcrData] = useState(null);
   const [showOcrPreview, setShowOcrPreview] = useState(false);
 
-  const handleSubmit = () => {
-    if (!form.description || !form.amount || !form.expenseDate) return;
-    setSubmitted(true);
-    setCurrentStatus(1);
-    setLog([{ approver: "Sarah", status: "Pending", time: new Date().toLocaleString() }]);
+  // Fetch user profile on component mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:5000/api/auth/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+
+        // Set default currency from user's company
+        if (res.data.company_id) {
+          const companyRes = await axios.get(
+            `http://localhost:5000/api/companies/${res.data.company_id}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+          setForm((prev) => ({ ...prev, currency: companyRes.data.currency }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch user profile:", err);
+      }
+    };
+    fetchUserProfile();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!form.description || !form.amount || !form.expenseDate || !user) return;
+
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
+    formData.append("employee_id", user.id);
+    formData.append("company_id", user.company_id);
+    formData.append("amount", form.amount);
+    formData.append("currency", form.currency);
+    formData.append("category", form.category);
+    formData.append("description", form.description);
+    formData.append("expense_date", form.expenseDate);
+    formData.append("remarks", form.remarks);
+    if (receiptFile) formData.append("receipt", receiptFile);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/expenses/submit",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+      setSubmitted(true);
+      setCurrentStatus(1);
+      setLog([
+        {
+          approver: "Sarah",
+          status: "Pending",
+          time: new Date().toLocaleString(),
+        },
+      ]);
+    } catch (err) {
+      console.error("Failed to submit expense:", err);
+    }
   };
 
   const handleReceiptChange = (e) => {
@@ -80,16 +141,24 @@ export default function SubmitRequest() {
     setErrorOCR(null);
     setOcrData(null);
     setShowOcrPreview(false);
-    
+
     const formData = new FormData();
     formData.append("receipt", receiptFile);
-    
+
     try {
-      const { data } = await axios.post("http://localhost:5000/api/ocr", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        timeout: 20000
-      });
-      
+      const token = localStorage.getItem("token");
+      const { data } = await axios.post(
+        "http://localhost:5000/api/ocr",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 20000,
+        },
+      );
+
       if (!data.success) {
         setErrorOCR(data.message || "Failed to scan receipt");
         return;
@@ -99,11 +168,10 @@ export default function SubmitRequest() {
       setOcrData(extractedData);
       setShowOcrPreview(true);
       console.log("[OCR] Extracted data:", extractedData);
-      
     } catch (err) {
       console.error("[OCR Error]", err);
-      
-      if (err.code === 'ECONNABORTED') {
+
+      if (err.code === "ECONNABORTED") {
         setErrorOCR("Request timeout. Server may be down.");
       } else if (err.response?.data?.message) {
         setErrorOCR(err.response.data.message);
@@ -117,37 +185,50 @@ export default function SubmitRequest() {
 
   const handleAcceptOcrData = () => {
     if (!ocrData) return;
-    
+
     setForm((prev) => ({
       ...prev,
       amount: prev.amount || ocrData.amount || "",
       expenseDate: prev.expenseDate || ocrData.date || "",
-      description: prev.description || ocrData.merchant || ""
+      description: prev.description || ocrData.merchant || "",
     }));
-    
+
     setShowOcrPreview(false);
   };
 
   return (
     <div className="w-full h-full p-6 space-y-4">
-
       {/* Page heading */}
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-6 bg-emerald-600 rounded-full" />
         <h1 className="text-base font-bold text-gray-800">Submit Request</h1>
       </div>
 
-      {/* Main Card — full width */}
+      {/* Main Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm w-full">
-
         {/* Top bar: Attach Receipt + Status trail */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <label className="cursor-pointer">
-              <input type="file" className="hidden" onChange={handleReceiptChange} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={handleReceiptChange}
+                accept="image/*"
+              />
               <span className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
                 </svg>
                 {receipt ? receipt : "Upload Receipt (Optional)"}
               </span>
@@ -165,8 +246,16 @@ export default function SubmitRequest() {
             )}
             {errorOCR && (
               <span className="text-xs text-red-500 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 {errorOCR}
               </span>
@@ -177,13 +266,15 @@ export default function SubmitRequest() {
           <div className="flex items-center gap-2 text-xs">
             {STATUS_STEPS.map((step, i) => (
               <span key={step} className="flex items-center gap-2">
-                <span className={`font-medium ${
-                  i === currentStatus
-                    ? "text-emerald-600"
-                    : i < currentStatus
-                    ? "text-gray-300 line-through"
-                    : "text-gray-400"
-                }`}>
+                <span
+                  className={`font-medium ${
+                    i === currentStatus
+                      ? "text-emerald-600"
+                      : i < currentStatus
+                        ? "text-gray-300 line-through"
+                        : "text-gray-400"
+                  }`}
+                >
                   {step}
                 </span>
                 {i < STATUS_STEPS.length - 1 && (
@@ -199,8 +290,12 @@ export default function SubmitRequest() {
           <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-200 space-y-3">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-emerald-900">OCR Scan Results</h3>
-                <p className="text-xs text-emerald-700 mt-0.5">Review extracted data and confirm</p>
+                <h3 className="text-sm font-semibold text-emerald-900">
+                  OCR Scan Results
+                </h3>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  Review extracted data and confirm
+                </p>
               </div>
               <button
                 onClick={() => setShowOcrPreview(false)}
@@ -213,7 +308,9 @@ export default function SubmitRequest() {
             <div className="grid grid-cols-3 gap-3 text-xs bg-white rounded-lg p-3 border border-emerald-200">
               <div>
                 <p className="text-emerald-600 font-semibold mb-1">Amount</p>
-                <p className="text-gray-800 font-medium">{ocrData.amount || "—"}</p>
+                <p className="text-gray-800 font-medium">
+                  {ocrData.amount || "—"}
+                </p>
               </div>
               <div>
                 <p className="text-emerald-600 font-semibold mb-1">Date</p>
@@ -244,7 +341,6 @@ export default function SubmitRequest() {
 
         {/* Form body */}
         <div className="px-6 py-5 space-y-6">
-
           {/* Row 1: Description + Expense Date */}
           <div className="grid grid-cols-2 gap-8">
             <div>
@@ -256,7 +352,9 @@ export default function SubmitRequest() {
                 placeholder="Brief description"
                 value={form.description}
                 disabled={submitted}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white text-gray-800 disabled:bg-gray-50 disabled:text-gray-400"
               />
             </div>
@@ -268,7 +366,9 @@ export default function SubmitRequest() {
                 type="date"
                 value={form.expenseDate}
                 disabled={submitted}
-                onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, expenseDate: e.target.value })
+                }
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white text-gray-700 disabled:bg-gray-50 disabled:text-gray-400"
               />
             </div>
@@ -277,7 +377,9 @@ export default function SubmitRequest() {
           {/* Row 2: Category + Paid By */}
           <div className="grid grid-cols-2 gap-8">
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">Category</label>
+              <label className="text-xs font-medium text-gray-500 mb-2 block">
+                Category
+              </label>
               <select
                 value={form.category}
                 disabled={submitted}
@@ -285,11 +387,17 @@ export default function SubmitRequest() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white text-gray-700 disabled:bg-gray-50 disabled:text-gray-400"
               >
                 <option value="">— Select —</option>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">Paid by</label>
+              <label className="text-xs font-medium text-gray-500 mb-2 block">
+                Paid by
+              </label>
               <select
                 value={form.paidBy}
                 disabled={submitted}
@@ -297,7 +405,11 @@ export default function SubmitRequest() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white text-gray-700 disabled:bg-gray-50 disabled:text-gray-400"
               >
                 <option value="">— Select —</option>
-                {PAID_BY.map((p) => <option key={p} value={p}>{p}</option>)}
+                {PAID_BY.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -310,11 +422,15 @@ export default function SubmitRequest() {
                 <select
                   value={form.currency}
                   disabled={submitted}
-                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, currency: e.target.value })
+                  }
                   className="text-xs font-semibold text-emerald-600 border-none focus:outline-none bg-transparent underline cursor-pointer disabled:text-gray-400"
                 >
                   {G20_CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                    <option key={c.code} value={c.code}>
+                      {c.code} — {c.name}
+                    </option>
                   ))}
                 </select>
                 <span className="text-gray-400 ml-1">▽</span>
@@ -328,14 +444,19 @@ export default function SubmitRequest() {
                   onChange={(e) => setForm({ ...form, amount: e.target.value })}
                   className="flex-1 text-sm focus:outline-none bg-transparent text-gray-800 disabled:text-gray-400"
                 />
-                <span className="text-xs text-gray-400 font-medium">{form.currency}</span>
+                <span className="text-xs text-gray-400 font-medium">
+                  {form.currency}
+                </span>
               </div>
               <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                Employee can submit expense in any currency (currency in which they spent the money per receipt)
+                Employee can submit expense in any currency (currency in which
+                they spent the money per receipt)
               </p>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">Description</label>
+              <label className="text-xs font-medium text-gray-500 mb-2 block">
+                Description
+              </label>
               <textarea
                 placeholder="Any additional remarks..."
                 value={form.remarks}
@@ -356,13 +477,22 @@ export default function SubmitRequest() {
                 <span>Time</span>
               </div>
               {log.map((entry, i) => (
-                <div key={i} className="grid grid-cols-3 gap-4 text-xs px-4 py-3 border-t border-gray-100">
-                  <span className="font-medium text-gray-800">{entry.approver}</span>
-                  <span className={`font-medium ${
-                    entry.status === "Approved" ? "text-emerald-600"
-                    : entry.status === "Rejected" ? "text-red-500"
-                    : "text-yellow-500"
-                  }`}>
+                <div
+                  key={i}
+                  className="grid grid-cols-3 gap-4 text-xs px-4 py-3 border-t border-gray-100"
+                >
+                  <span className="font-medium text-gray-800">
+                    {entry.approver}
+                  </span>
+                  <span
+                    className={`font-medium ${
+                      entry.status === "Approved"
+                        ? "text-emerald-600"
+                        : entry.status === "Rejected"
+                          ? "text-red-500"
+                          : "text-yellow-500"
+                    }`}
+                  >
                     {entry.status}
                   </span>
                   <span className="text-gray-400">{entry.time}</span>
@@ -376,7 +506,12 @@ export default function SubmitRequest() {
             <div className="pt-1">
               <button
                 onClick={handleSubmit}
-                disabled={!form.description || !form.amount || !form.expenseDate}
+                disabled={
+                  !form.description ||
+                  !form.amount ||
+                  !form.expenseDate ||
+                  !user
+                }
                 className="border-2 border-gray-800 text-gray-800 font-semibold text-sm px-8 py-2 rounded-full hover:bg-gray-800 hover:text-white transition disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed"
               >
                 Submit
@@ -385,22 +520,32 @@ export default function SubmitRequest() {
           ) : (
             <div className="pt-1">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-600 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded-full">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                <svg
+                  className="w-3 h-3"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 Pending Approval — record is now read-only
               </span>
             </div>
           )}
-
         </div>
       </div>
 
       {/* Info note */}
       {!submitted && (
         <p className="text-xs text-gray-400 px-1">
-          Once submitted, the record becomes read-only and the submit button will be hidden. Status will change to{" "}
-          <span className="font-medium text-yellow-500">Waiting Approval</span>. A log history will track who approved or rejected your request and at what time.
+          Once submitted, the record becomes read-only and the submit button
+          will be hidden. Status will change to{" "}
+          <span className="font-medium text-yellow-500">Waiting Approval</span>.
+          A log history will track who approved or rejected your request and at
+          what time.
         </p>
       )}
     </div>

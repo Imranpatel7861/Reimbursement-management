@@ -45,6 +45,29 @@ const sendPasswordEmail = async (email, password) => {
   await transporter.sendMail(mailOptions);
 };
 
+
+// Get user profile
+exports.getUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // From JWT middleware
+
+    const userQuery = await pool.query(
+      "SELECT id, name, email, role, company_id, manager_id FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userQuery.rows[0];
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // Forgot password
 exports.forgotPassword = async (req, res) => {
   try {
