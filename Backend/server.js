@@ -3,10 +3,13 @@ const cors = require("cors");
 const pool = require("./config/db");
 const authRoutes = require("./routes/authRoutes.js");
 
+const ocrRoutes = require("./routes/ocrRoutes.js");
+
 const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://lvw98rvl-5173.inc1.devtunnels.ms"
 ];
 
@@ -30,8 +33,8 @@ app.use(
 
 app.use(express.json());
 
-
 app.use("/api/auth", authRoutes);
+app.use("/api/ocr", ocrRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend running 🚀");
