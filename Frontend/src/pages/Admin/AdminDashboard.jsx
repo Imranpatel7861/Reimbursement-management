@@ -8,6 +8,7 @@ import {
   X,
   Menu,
   Bell,
+  GitBranch,
 } from "lucide-react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
@@ -23,6 +24,12 @@ const Dashboard = () => {
       icon: Users,
       label: "Manage Users",
       path: "/admindashboard/users",
+    },
+    {
+      id: "ApprovalConfig",
+      icon: GitBranch,
+      label: "Approval Config",
+      path: "/admindashboard/approval-config",
     },
   ];
 
