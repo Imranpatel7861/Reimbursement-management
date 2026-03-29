@@ -12,7 +12,11 @@ import SubmitExpense from "./pages/Employee/SubmitExpense";
 import ExpenseHistory from "./pages/Employee/ExpenseHistory";
 import PendingApprovals from "./pages/Manager/PendingApprovals";
 import ManageUsers from "./pages/Admin/ManageUsers";
+<<<<<<< HEAD
 import History from "./pages/Manager/ManagerHistory";
+=======
+import ApprovalConfig from "./pages/Admin/ApprovalConfig";
+>>>>>>> 1f24c9fc41176dce2082a71e6785469d9f6582be
 
 function App() {
   return (
@@ -25,6 +29,12 @@ function App() {
         <Route index element={<Navigate to="users" replace />} />
 
         <Route path="users" element={<ManageUsers />} />
+<<<<<<< HEAD
+=======
+        <Route path="approval-config" element={<ApprovalConfig />} />
+
+        
+>>>>>>> 1f24c9fc41176dce2082a71e6785469d9f6582be
       </Route>
 
       {/* {Employeedashboard} */}
