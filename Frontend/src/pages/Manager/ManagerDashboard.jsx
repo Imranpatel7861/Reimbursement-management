@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  Clock,
-  History,
-  LogOut,
-  X,
-  Menu,
-} from "lucide-react";
+import { Clock, History, LogOut, X, Menu } from "lucide-react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
 const ManagerDashboard = () => {
@@ -47,7 +41,6 @@ const ManagerDashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
@@ -117,7 +110,6 @@ const ManagerDashboard = () => {
 
       {/* Right Side */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
         {/* Top Bar */}
         <div className="h-16 bg-white border-b border-gray-200 flex items-center px-6 flex-shrink-0">
           {/* Mobile menu toggle */}
