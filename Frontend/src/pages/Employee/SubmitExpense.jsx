@@ -85,7 +85,7 @@ export default function SubmitRequest() {
     formData.append("receipt", receiptFile);
     
     try {
-      const { data } = await axios.post("http://localhost:5001/api/ocr", formData, {
+      const { data } = await axios.post("http://localhost:5000/api/ocr", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 20000
       });
@@ -249,7 +249,7 @@ export default function SubmitRequest() {
           <div className="grid grid-cols-2 gap-8">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-2 block">
-                Description <span className="text-red-400">*</span>
+                Merchant <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
@@ -335,7 +335,7 @@ export default function SubmitRequest() {
               </p>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">Remarks</label>
+              <label className="text-xs font-medium text-gray-500 mb-2 block">Description</label>
               <textarea
                 placeholder="Any additional remarks..."
                 value={form.remarks}

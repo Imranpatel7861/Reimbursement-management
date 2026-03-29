@@ -39,6 +39,10 @@ function App() {
         <Route path="expensehistory" element={<ExpenseHistory />} />
       </Route>
       {/* {Financerdashboard} */}
+          <Route path="submitexpense"  element={<SubmitExpense/>} />
+          <Route path="expensehistory"  element={<ExpenseHistory/>} />
+</Route>
+  {/* {Financerdashboard} */}
       <Route path="/Financerdashboard" element={<FinancerDashboard />}>
         {/* <Route index element={<Navigate to="director" replace />} /> */}
       </Route>
